@@ -29,6 +29,14 @@ def parse_args():
     group.add_argument('--filter-date', nargs=3, metavar=('COLUMN','START','END'),
                        help=('фильтрация CSV по дате: первая строка + строки, '
                              'где COLUMN в интервале START..END'))
+
+    group.add_argument('--count', action='store_true',
+                       help='просто вывести количество строк во входном файле и выйти')
+    # group.add_argument('--sum-lines', action='store_true',
+    #                    help='просуммировать числовые значения в строках и вывести результат')
+    group.add_argument('--add-files', metavar='FILE2',
+                       help='сложить построчно два файла (числа), недостающие=0')
+
     return parser.parse_args()
 
 def infer_type(values):
@@ -120,8 +128,63 @@ def filter_date_csv(input_path, output_path, column, start_s, end_s):
     print(f"Готово! Отфильтровано строк: файл «{output_path}».")
     print(f"Всего строк во входном файле: {total}")
 
+
+def count_lines(path):
+    total = 0
+    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+        for _ in f:
+            total += 1
+    print(f"Всего строк во входном файле: {total}")
+    sys.exit(0)
+
+def sum_lines(path):
+    total = 0.0
+    count_num = 0
+    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            s = line.strip()
+            if not s:
+                continue
+            try:
+                # сначала int, затем float
+                val = int(s)
+            except ValueError:
+                try:
+                    val = float(s)
+                except ValueError:
+                    continue
+            total += val
+            count_num += 1
+    print(f"Найдено числовых строк: {count_num}")
+    print(f"Сумма значений: {total}")
+    sys.exit(0)
+
+
+def add_files(path1, path2, output_path):
+    total = 0
+    with open(path1, 'r', encoding='utf-8', errors='ignore') as f1, \
+         open(path2, 'r', encoding='utf-8', errors='ignore') as f2, \
+         open(output_path, 'w', encoding='utf-8') as fout:
+        for l1, l2 in zip_longest(f1, f2, fillvalue=''):
+            n1 = parse_number(l1)
+            n2 = parse_number(l2)
+            fout.write(f"{n1 + n2}\n")
+            total += 1
+    print(f"Готово! Сложено строк: {total}. Результат в «{output_path}»")
+    sys.exit(0)
+
+
 def main():
     args = parse_args()
+
+    # --count
+    if args.count:
+        count_lines(args.input)
+
+    # --sum-lines
+    if args.sum_lines:
+        sum_lines(args.input)
+
 
     # режим анализа CSV
     if args.analyze:
